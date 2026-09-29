@@ -4,13 +4,14 @@
  */
 // Lula nos Trilhos — corrida infinita nos trilhos, paródia bem-humorada (Alequizão)
 import * as THREE from 'three';
-import { ic } from './icones.js?v=1.0.3';
-import { criaCorredor as modeloCorredor, criaVigia as modeloVigia } from './personagens.js?v=1.0.3';
-import { criaVisualTrem, criaVisualRampa, criaVisualBarreira, animaObjetos } from './objetos.js?v=1.0.3';
-import { GEO_MOEDA, MATS_MOEDA, criaVisualPoder, animaItens } from './itens.js?v=1.0.3';
-import { iniciaRanking, rankingFim } from './ranking.js?v=1.0.3';
+import { ic } from './icones.js?v=1.0.5';
+import { criaCorredor as modeloCorredor, criaVigia as modeloVigia } from './personagens.js?v=1.0.5';
+import { criaVisualTrem, criaVisualRampa, criaVisualBarreira, animaObjetos } from './objetos.js?v=1.0.5';
+import { GEO_MOEDA, MATS_MOEDA, criaVisualPoder, animaItens } from './itens.js?v=1.0.5';
+import { iniciaRanking, rankingFim } from './ranking.js?v=1.0.5';
+import { criaBiomas } from './biomas.js?v=1.0.5';
 
-const VERSAO = '1.0.3';
+const VERSAO = '1.0.5';
 const LANE = 2.6;          // distância entre trilhos
 const GRAV = 38;
 const PULO = 14.5;
@@ -1119,6 +1120,8 @@ const MAXV_PREDIOS = 6 * Math.max(...PROTOS_PREDIO.flat().map(p => p.p.length / 
 
 // ================= CENÁRIO (reciclado) =================
 const trechos = [];
+// biomas (túnel, ponte, ciclo dia/noite) + clima (sol/nublado/chuva): só visual, em biomas.js e clima.js
+const BIOMAS = criaBiomas({ scene, sol, hemi, ceu, matCeu, M, G, TRECHO, renderer, camera, fraco: CELULAR, audio: () => ({ AC, master }), somAtivo: () => S.som && estado === 'jogando' });
 function criaTrecho(k) {
   const g = new THREE.Group();
   const add = (geo, mat, projeta = false, recebe = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = projeta; m.receiveShadow = recebe; g.add(m); return m; };
@@ -1152,7 +1155,9 @@ function criaTrecho(k) {
   add(bp.geometria(), M.palmeira, true);
   const mastros = G.mastros.map(geo => { const m = add(geo, M.bandeira, true); m.visible = false; return m; });
   scene.add(g);
-  return { g, muros, geoPred, mastros, d: 0 };
+  const t = { g, muros, geoPred, mastros, d: 0 };
+  BIOMAS.montaTrecho(t);
+  return t;
 }
 function posicionaTrecho(t, d) {
   t.d = d; t.g.position.z = -d;
@@ -1170,6 +1175,7 @@ function posicionaTrecho(t, d) {
   });
   t.geoPred.setDrawRange(0, o);
   A.position.needsUpdate = A.normal.needsUpdate = A.uv.needsUpdate = true;
+  BIOMAS.ajustaTrecho(t);
 }
 for (let i = 0; i < N_TRECHOS; i++) { const t = criaTrecho(i); posicionaTrecho(t, (i - 1) * TRECHO); trechos.push(t); }
 
@@ -1236,6 +1242,7 @@ function criaItem(l, d, k) {
 // visual por quadro: céu segue a câmera, sol/sombra segue o jogador, moedas no InstancedMesh, luzes piscando
 function atualizaVisual(t) {
   ceu.position.copy(camera.position);
+  BIOMAS.atualiza(R ? R.dist : 0, camera.position.z);
   if (sombrasLigadas) atualizaSol();
   let n = 0;
   for (const c of moedas) { if (n >= MAX_MOEDAS) break; c.m.updateMatrix(); imMoedas.setMatrixAt(n++, c.m.matrix); }
@@ -1871,5 +1878,12 @@ function simula(seg, cb) {
   }
   return estado;
 }
-window.__surf = { simula, get estado() { return estado; }, get R() { return R; }, get obst() { return obst; }, acao, iniciar, pausa, retoma, irMenu, pegaPoder, criaItem, criaBarreira, criaTrem, get S() { return S; }, get itens() { return itens; }, VERSAO, renderer, scene, camera, get sombras() { return sombrasLigadas; } };
+window.__surf = { simula, get estado() { return estado; }, get R() { return R; }, get obst() { return obst; }, acao, iniciar, pausa, retoma, irMenu, pegaPoder, criaItem, criaBarreira, criaTrem, get S() { return S; }, get itens() { return itens; }, VERSAO, renderer, scene, camera, get sombras() { return sombrasLigadas; },
+  // testes: bioma('tunel'|'ponte'|'cidade'|'auto', dist), hora(0..1|null), clima('sol'|'nublado'|'chuva'|'auto', instantâneo?)
+  bioma(nome, ini) { BIOMAS.forca(nome, ini); trechos.forEach(t => BIOMAS.ajustaTrecho(t)); },
+  hora(h) { BIOMAS.hora(h); },
+  clima(nome, ja) { BIOMAS.clima(nome, ja); },
+  get climaEstado() { return BIOMAS.climaEstado; },
+};
+window.__lula = window.__surf;
 window.__lula = window.__surf; // alias com o nome do jogo (window.__surf mantido pros testes)
