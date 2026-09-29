@@ -4,12 +4,13 @@
  */
 // Lula nos Trilhos — corrida infinita nos trilhos, paródia bem-humorada (Alequizão)
 import * as THREE from 'three';
-import { ic } from './icones.js?v=1.0.2';
-import { criaCorredor as modeloCorredor, criaVigia as modeloVigia } from './personagens.js?v=1.0.2';
-import { criaVisualTrem, criaVisualRampa, criaVisualBarreira, animaObjetos } from './objetos.js?v=1.0.2';
-import { GEO_MOEDA, MATS_MOEDA, criaVisualPoder, animaItens } from './itens.js?v=1.0.2';
+import { ic } from './icones.js?v=1.0.3';
+import { criaCorredor as modeloCorredor, criaVigia as modeloVigia } from './personagens.js?v=1.0.3';
+import { criaVisualTrem, criaVisualRampa, criaVisualBarreira, animaObjetos } from './objetos.js?v=1.0.3';
+import { GEO_MOEDA, MATS_MOEDA, criaVisualPoder, animaItens } from './itens.js?v=1.0.3';
+import { iniciaRanking, rankingFim } from './ranking.js?v=1.0.3';
 
-const VERSAO = '1.0.2';
+const VERSAO = '1.0.3';
 const LANE = 2.6;          // distância entre trilhos
 const GRAV = 38;
 const PULO = 14.5;
@@ -519,7 +520,8 @@ const texMuros = Array.from({ length: 4 }, (_, k) => tex(2048, 160, (g, w, h) =>
   for (let i = 0; i < n; i++) {
     const x = (i + srnd(.25, .75)) * w / n, y = h * srnd(.42, .56);
     const tipo = (i * 3 + k) % 5;
-    if (tipo === 1) grafiteBandeira(g, x, y, srnd(44, 54));
+    if (i === 0) grafite(g, x, y, srnd(46, 54), '@alequizao'); // divulgação do Instagram em todo muro
+    else if (tipo === 1) grafiteBandeira(g, x, y, srnd(44, 54));
     else if (tipo === 3) grafiteCongresso(g, x, y, srnd(50, 56));
     else if (tipo === 4) grafiteIpe(g, x, y, srnd(52, 60));
     else grafite(g, x, y, srnd(50, 72), spick(PALAVRAS));
@@ -1251,11 +1253,48 @@ function limpaPista() {
 }
 
 // ---------- gerador de padrões ----------
-let genD, laneFim, tremFim;
-function resetGerador() { genD = 55; laneFim = [0, 0, 0]; tremFim = [0, 0, 0]; }
+let genD, laneFim, tremFim, bloq;
+function resetGerador() { genD = 55; laneFim = [0, 0, 0]; tremFim = [0, 0, 0]; bloq = []; }
+// ---------- garantia de saída ----------
+// bloq = trechos intransponíveis (trem, tapume) em "metros do jogador": o trem na contramão vem ao
+// encontro, então o trecho dele é comprimido/adiantado conforme as velocidades. Antes de pôr um
+// bloqueio, simula a pista em células de 1 m: toda célula alcançável precisa ter continuação
+// (sem beco sem saída) e trocar de trilho exige os dois trilhos livres por alguns metros.
+function trechoJogador(o) {
+  if (!o.movel) return [o.d0, o.d1];
+  const p0 = R ? R.dist : 0, v = Math.max(14, R ? R.vel : 14), f = v / (v + o.vT);
+  return [p0 + (o.d0 - p0) * f - 3, p0 + (o.d1 - p0) * f + 3];
+}
+function vivosNoInicio(lista) { // quais trilhos, na posição atual, ainda têm caminho até o fim da pista gerada
+  const p0 = Math.floor(R ? R.dist : 0);
+  let fim = p0 + 40; for (const b of lista) fim = Math.max(fim, Math.ceil(b.b) + 30);
+  const N = fim - p0, livre = [0, 1, 2].map(() => new Uint8Array(N + 1).fill(1));
+  for (const b of lista) for (let s = Math.max(0, Math.floor(b.a) - 1 - p0); s <= Math.min(N, Math.ceil(b.b) + 1 - p0); s++) livre[b.l][s] = 0;
+  const v = Math.max(14, R ? R.vel : 14), LC = Math.ceil(v * 0.3) + 2; // metros gastos na troca de trilho
+  const troca = (s, a, b) => { for (let k = 0; k <= LC; k++) if (s + k > N || !livre[a][s + k] || !livre[b][s + k]) return false; return true; };
+  const vivo = [0, 1, 2].map(() => new Uint8Array(N + 1));
+  for (let l = 0; l < 3; l++) vivo[l][N] = livre[l][N];
+  for (let s = N - 1; s >= 0; s--) for (let rep = 0; rep < 2; rep++) for (let l = 0; l < 3; l++) {
+    if (!livre[l][s] || vivo[l][s]) continue;
+    if (vivo[l][s + 1] || [l - 1, l + 1].some(m => m >= 0 && m < 3 && troca(s, l, m) && vivo[m][Math.min(N, s + LC)])) vivo[l][s] = 1;
+  }
+  return [0, 1, 2].map(l => vivo[l][0]);
+}
+// o novo bloqueio não pode tirar a saída de nenhum trilho que tinha saída antes
+function pistaTemSaida(extra) {
+  const antes = vivosNoInicio(bloq), depois = vivosNoInicio(bloq.concat(extra));
+  return depois.some(x => x) && antes.every((x, l) => !x || depois[l]);
+}
+// cria o bloqueio só se a pista continuar com saída; senão desfaz e devolve null
+function tentaBloqueio(o) {
+  const [a, b] = trechoJogador(o), item = { l: o.l, a, b };
+  if (!pistaTemSaida([item])) { scene.remove(o.g); obst.splice(obst.indexOf(o), 1); return null; }
+  bloq.push(item); return o;
+}
 function sorteiaPoder() { const r = Math.random(); return r < .3 ? 'ima' : r < .5 ? 'jato' : r < .75 ? 'tenis' : 'dobro'; }
 function geraLinha() {
   const d = genD, dific = Math.min(1, d / 3500);
+  if (R) bloq = bloq.filter(b => b.b > R.dist - 5);
   const livres = [0, 1, 2].filter(l => laneFim[l] < d);
   if (!livres.length) { genD += 5; return; }
   // FOLGA: trilho que acabou de liberar ainda conta como bloqueado (dá tempo de trocar de trilho);
@@ -1270,8 +1309,8 @@ function geraLinha() {
   if (d > 350 && r < 0.1 + 0.12 * dific && candMovel.length && tremFim.every(f => f < d - 35)) {
     // trem vindo na contramão
     const l = escolhe(candMovel.filter(k => outrosLivres(k) >= 1).length ? candMovel.filter(k => outrosLivres(k) >= 1) : candMovel);
-    const t = criaTrem(l, d, 1 + (Math.random() < .5 ? 1 : 0), true);
-    laneFim[l] = t.d1 + 3; tremFim[l] = t.d1; usados.add(l);
+    const t = tentaBloqueio(criaTrem(l, d, 1 + (Math.random() < .5 ? 1 : 0), true));
+    if (t) { laneFim[l] = t.d1 + 3; tremFim[l] = t.d1; usados.add(l); }
     const livre = livres.filter(k => k !== l);
     if (livre.length) linhaMoedas(escolhe(livre), d - 10, 8);
   } else if (r < 0.52 && trensAtivos < 2) {
@@ -1285,7 +1324,8 @@ function geraLinha() {
       const carros = 1 + Math.floor(Math.random() * (rampa ? 3 : 2.5));
       let d0 = d;
       if (rampa) { criaRampa(l, d); d0 = d + 10; }
-      const t = criaTrem(l, d0, carros);
+      const t = rampa ? criaTrem(l, d0, carros) : tentaBloqueio(criaTrem(l, d0, carros));
+      if (!t) continue;
       laneFim[l] = t.d1 + 2; tremFim[l] = t.d1; usados.add(l);
       if (rampa) { for (let k = 0; k < 4; k++) criaMoeda(laneX(l), 1.0 + TOPO_TREM * (k * 2.5 + 1) / 10, d + 1 + k * 2.5); linhaMoedas(l, d0 + 2, Math.floor((t.d1 - d0 - 2) / 2.4), TOPO_TREM + 0.9); t.temMoedas = true; }
     }
@@ -1306,7 +1346,9 @@ function geraLinha() {
       let tipo = Math.random() < .5 ? 'baixa' : 'alta';
       // tapume só com os outros trilhos sem trem por perto (senão prende o jogador do lado de lá)
       if (Math.random() < .15 + .15 * dific && tapumes === 0 && bloqueadas === 0 && ordem.length < 3) { tipo = 'tapume'; tapumes++; }
-      criaBarreira(l, d, tipo); laneFim[l] = d + 1; usados.add(l);
+      if (tipo === 'tapume' && !tentaBloqueio(criaBarreira(l, d, tipo))) tipo = Math.random() < .5 ? 'baixa' : 'alta';
+      if (tipo !== 'tapume') criaBarreira(l, d, tipo);
+      laneFim[l] = d + 1; usados.add(l);
       if (tipo === 'tapume') tremFim[l] = d + 1;
       if (tipo === 'baixa' && Math.random() < .6) arcoMoedas(l, d + 0.2);
     }
@@ -1613,7 +1655,9 @@ function animaVigia(dt) {
   const f = t * 13, s = Math.sin(f);
   const pegou = estado === 'morrendo' && R.morteT > 0.6;
   v.pE.rotation.x = pegou ? 0 : s * 0.9; v.pD.rotation.x = pegou ? 0 : -s * 0.9;
-  v.bE.rotation.x = pegou ? -2.2 : -s * 0.8; v.bD.rotation.x = pegou ? -1.6 : s * 0.8 - 0.4;
+  // braços em oposição às pernas; ao pegar, estica os dois pra frente (rotação + = frente)
+  v.bE.rotation.x = pegou ? 1.35 : -s * 0.75; v.bD.rotation.x = pegou ? 1.15 : s * 0.75;
+  if (v.bE.ante) v.bE.ante.rotation.x = v.bD.ante.rotation.x = pegou ? 0.25 : 0.85;
   v.corpo.position.y = 1.05 + (pegou ? 0 : Math.abs(Math.cos(f)) * 0.1);
   v.patas.forEach((p, i) => { p.rotation.x = Math.sin(f * 1.3 + i * 1.6) * 0.8; });
   v.cao.position.y = Math.abs(Math.sin(f * 1.3)) * 0.12;
@@ -1669,7 +1713,7 @@ function toast(msg) {
 }
 
 // ================= TELAS =================
-const telas = ['#tela-menu', '#tela-ajuda', '#tela-loja', '#tela-missoes', '#tela-pausa', '#tela-fim'];
+const telas = ['#tela-menu', '#tela-ajuda', '#tela-loja', '#tela-missoes', '#tela-pausa', '#tela-fim', '#tela-ranking'];
 function mostra(id) { telas.forEach(t => $(t).classList.toggle('oculto', t !== id)); $('#hud').classList.toggle('oculto', !(estado === 'jogando' || estado === 'pausado' || estado === 'morrendo')); }
 function atualizaMenu() {
   $('#m-moedas').textContent = fmt(S.moedas); $('#m-pranchas').textContent = S.pranchas; $('#m-recorde').textContent = fmt(S.recorde);
@@ -1699,16 +1743,18 @@ function fimDeJogo() {
   $('#fim-recorde').classList.toggle('oculto', !novo);
   $('#fim-pontos').textContent = fmt(R.pontos); $('#fim-moedas').textContent = fmt(R.moedas);
   $('#fim-dist').textContent = fmt(R.dist) + ' m'; $('#fim-melhor').textContent = fmt(S.recorde);
-  custoReviver = R.continuou ? 0 : 400;
+  custoReviver = 400; // continuar quantas vezes quiser, enquanto tiver moedas
   $('#custo-reviver').textContent = custoReviver;
   const bt = $('#bt-reviver');
-  bt.classList.toggle('oculto', R.continuou); bt.disabled = S.moedas < custoReviver;
+  bt.classList.remove('oculto'); bt.disabled = S.moedas < custoReviver;
+  bt.title = S.moedas < custoReviver ? `Faltam ${fmt(custoReviver - S.moedas)} moedas` : '';
+  rankingFim({ pontos: R.pontos, moedas: R.moedas, dist: R.dist });
   mostra('#tela-fim');
 }
 // soma ao cofre só as moedas ainda não somadas (continuar não duplica)
 function somaMoedas() { S.moedas += R.moedas - (R.somadas || 0); R.somadas = R.moedas; }
 function reviver() {
-  if (R.continuou || S.moedas < custoReviver) return;
+  if (S.moedas < custoReviver) return;
   S.moedas -= custoReviver; salvar();
   R.continuou = true;
   for (let i = obst.length - 1; i >= 0; i--) { const o = obst[i]; if (o.d1 > R.dist - 3 && o.d0 < R.dist + 45) { scene.remove(o.g); obst.splice(i, 1); } }
@@ -1779,6 +1825,7 @@ $('#bt-jogar').onclick = iniciar;
 $('#bt-loja').onclick = () => { audio(); renderLoja(); mostra('#tela-loja'); };
 $('#bt-missoes').onclick = () => { audio(); renderMissoes('#lista-missoes'); $('#mi-mult').textContent = 'x' + mult(); mostra('#tela-missoes'); };
 $('#bt-ajuda').onclick = () => { audio(); mostra('#tela-ajuda'); };
+iniciaRanking({ mostra, audio });
 document.querySelectorAll('.bt-voltar').forEach(b => b.onclick = () => { atualizaMenu(); mostra('#tela-menu'); });
 $('#bt-som').onclick = () => { S.som = !S.som; salvar(); audio(); atualizaMenu(); };
 $('#bt-musica').onclick = () => { S.musica = !S.musica; salvar(); atualizaMenu(); };

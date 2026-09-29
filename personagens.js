@@ -681,18 +681,25 @@ export function criaVigia() {
   };
   const pE = perna(-0.19), pD = perna(0.19);
 
-  // ---- braços: manga do paletó, punho branco, mão ----
-  const gManga = new THREE.CapsuleGeometry(0.11, 0.42, 4, 14);
-  const gPunho = new THREE.CylinderGeometry(0.085, 0.085, 0.06, 12);
+  // ---- braços: ombro → cotovelo dobrado → antebraço, punho branco, mão ----
+  // (pivô no ombro; o antebraço já vem dobrado pra frente, pose de quem corre)
+  const gBraco = new THREE.CapsuleGeometry(0.12, 0.2, 4, 14);
+  const gAnte = new THREE.CapsuleGeometry(0.105, 0.2, 4, 14);
+  const gCotovelo = new THREE.SphereGeometry(0.113, 14, 10);
+  const gPunho = new THREE.CylinderGeometry(0.088, 0.088, 0.06, 12);
   const gMao = new THREE.SphereGeometry(0.095, 12, 10);
   const braco = x => {
-    const p = new THREE.Group(); p.position.set(x, 0.78, 0);
-    p.add(malha(gManga, terno, { p: [0, -0.28, 0] }));
-    p.add(malha(gPunho, camisa, { p: [0, -0.54, 0] }));
-    p.add(malha(gMao, pele, { p: [0, -0.64, 0], s: [0.9, 1.1, 1] }));
-    corpo.add(p); return p;
+    const p = new THREE.Group(); p.position.set(x, 0.76, 0);
+    const abre = new THREE.Group(); abre.rotation.z = Math.sign(x) * 0.1; p.add(abre); // leve afastamento do corpo
+    abre.add(malha(gBraco, terno, { p: [0, -0.17, 0] }));
+    abre.add(malha(gCotovelo, terno, { p: [0, -0.34, 0] }));
+    const ante = new THREE.Group(); ante.position.y = -0.34; ante.rotation.x = 0.85; abre.add(ante);
+    ante.add(malha(gAnte, terno, { p: [0, -0.15, 0] }));
+    ante.add(malha(gPunho, camisa, { p: [0, -0.3, 0] }));
+    ante.add(malha(gMao, pele, { p: [0, -0.39, 0], s: [0.9, 1.1, 1] }));
+    corpo.add(p); p.ante = ante; return p;
   };
-  const bE = braco(-0.5), bD = braco(0.5);
+  const bE = braco(-0.47), bD = braco(0.47);
 
   // ---- cachorro caramelo ----
   const cao = new THREE.Group(); cao.position.set(1.0, 0, 0.3);

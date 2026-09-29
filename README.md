@@ -1,7 +1,7 @@
 # 🇧🇷 Lula nos Trilhos — jogo de corrida infinita 3D no navegador
 
 [![Jogar agora](https://img.shields.io/badge/▶_Jogar_agora-alequizao.com%2Flula-e8364f?style=for-the-badge)](https://alequizao.com/lula/)
-![Versão](https://img.shields.io/badge/versão-1.0.2-2f6bff?style=for-the-badge)
+![Versão](https://img.shields.io/badge/versão-1.0.3-2f6bff?style=for-the-badge)
 ![Three.js](https://img.shields.io/badge/Three.js-r170-000?style=for-the-badge&logo=three.js)
 ![PWA](https://img.shields.io/badge/PWA-offline-1fc46b?style=for-the-badge)
 
@@ -18,6 +18,8 @@
 | Menu | Corrida |
 |:---:|:---:|
 | <img src="docs/img/prod-menu.jpg" width="300"> | <img src="docs/img/jogo-11-corrida.jpg" width="300"> |
+| **Ranking online** | **Segurança** |
+| <img src="docs/img/ranking-menu.jpg" width="300"> | <img src="docs/img/seguranca.jpg" width="300"> |
 | **Ímã de moedas** | **Pulo** |
 | <img src="docs/img/jogo-05-ima.jpg" width="300"> | <img src="docs/img/jogo-03-pulo.jpg" width="300"> |
 
@@ -47,6 +49,9 @@
 
 ## ✨ Recursos
 
+- **Ranking online:** ao perder, a pessoa salva o placar com o nome ou o @ do Instagram e vê a posição; top 50 no menu (PHP + SQLite, com validação e limite de envios).
+- **Pista sempre com saída:** o gerador simula os trilhos à frente e só coloca um trem ou tapume se ainda houver caminho — inclusive contando o trem na contramão.
+- **Continuar sempre:** com 400 moedas dá para continuar a corrida quantas vezes quiser.
 - **Personagem Lula em 3D:** cabelo e barba brancos, terno azul-marinho, camisa azul clara, gravata vinho e faixa presidencial.
 - **Visuais na loja:** Lula, Lula Debate, Lula Metalúrgico, Lula Presidente e Lula Neon.
 - **Poderes:** Ímã de Moedas, Jatinho, Tênis Mola e Picanha 2x — com níveis na loja.
@@ -71,6 +76,7 @@
 | `objetos.js` | trens, rampa e obstáculos |
 | `itens.js` | moedas e poderes |
 | `icones.js` | helper dos ícones SVG |
+| `ranking.js` / `ranking.php` | ranking online (tela, envio e API com SQLite fora da pasta pública) |
 | `estilo.css` | interface |
 | `sw.js` / `manifest.webmanifest` | PWA offline |
 
@@ -83,15 +89,18 @@ python3 -m http.server 8080
 # abra http://localhost:8080
 ```
 
+O ranking precisa de PHP 7.4+ com `pdo_sqlite`: ajuste `PASTA_DADOS` em `ranking.php` para uma pasta fora do alcance da web (o banco e o segredo do hash de IP são criados sozinhos).
+
 > A cada publicação, suba a versão (`?v=`) em `index.html`, nos `import` dos módulos, em `sw.js` (`VERSAO` e lista) e em `jogo.js`.
 
-Veja também: [Surf nos Trilhos](https://github.com/alequizao/surf-nos-trilhos), o jogo original.
+Veja também: [Surf nos Trilhos](https://github.com/alequizao/surf-nos-trilhos), o jogo original, e [Flávio nos Trilhos](https://github.com/alequizao/flavio-nos-trilhos).
 
 ## 👨‍💻 Desenvolvedor
 
 Jogo desenvolvido por **Alequizao**.
 
 - **E-mail:** alequizao.dev@gmail.com
+- **Instagram:** [@alequizao](https://instagram.com/alequizao)
 - **GitHub:** [@alequizao](https://github.com/alequizao)
 - **Site:** [alequizao.com](https://alequizao.com/)
 
