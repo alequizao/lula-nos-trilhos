@@ -3,8 +3,8 @@
  * https://github.com/alequizao · © 2026 Alequizao. Todos os direitos reservados.
  */
 // Lula nos Trilhos — service worker (offline). Suba VERSAO a cada deploy.
-const VERSAO = 'lula-v1.0.5';
-const ARQUIVOS = ['./', './index.html', './estilo.css?v=1.0.5', './jogo.js?v=1.0.5', './lib/three.module.min.js', './personagens.js?v=1.0.5', './objetos.js?v=1.0.5', './itens.js?v=1.0.5', './icones.js?v=1.0.5', './ranking.js?v=1.0.5', './biomas.js?v=1.0.5', './clima.js?v=1.0.5',
+const VERSAO = 'lula-v1.0.6';
+const ARQUIVOS = ['./', './index.html', './estilo.css?v=1.0.6', './jogo.js?v=1.0.6', './lib/three.module.min.js', './personagens.js?v=1.0.6', './objetos.js?v=1.0.6', './itens.js?v=1.0.6', './icones.js?v=1.0.6', './ranking.js?v=1.0.6', './biomas.js?v=1.0.6', './clima.js?v=1.0.6',
   './manifest.webmanifest', './icone-192.png?v=4', './icone-512.png?v=4', './icone-maskable.png?v=4', './apple-touch-icon.png?v=4'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSAO).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));

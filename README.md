@@ -1,7 +1,7 @@
 # 🇧🇷 Lula nos Trilhos — jogo de corrida infinita 3D no navegador
 
 [![Jogar agora](https://img.shields.io/badge/▶_Jogar_agora-alequizao.com%2Flula-e8364f?style=for-the-badge)](https://alequizao.com/lula/)
-![Versão](https://img.shields.io/badge/versão-1.0.5-2f6bff?style=for-the-badge)
+![Versão](https://img.shields.io/badge/versão-1.0.6-2f6bff?style=for-the-badge)
 ![Three.js](https://img.shields.io/badge/Three.js-r170-000?style=for-the-badge&logo=three.js)
 ![PWA](https://img.shields.io/badge/PWA-offline-1fc46b?style=for-the-badge)
 
@@ -49,6 +49,7 @@
 
 ## ✨ Recursos
 
+- 🎯 **Física em subpassos:** a colisão é calculada em passos de até 0,3 m, então o jogo continua justo mesmo em celular fraco ou com FPS baixo (sem "batida imaginária" ao subir da rampa para o trem).
 - 🌦️ **Clima que muda sozinho** — sol, nublado e chuva (gotas, trilho molhado e som), junto com o ciclo dia/noite, túnel e ponte.
 
   <img src="docs/img/clima-chuva.jpg" alt="Corrida na chuva" width="260">
